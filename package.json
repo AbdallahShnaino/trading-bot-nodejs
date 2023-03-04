@@ -12,7 +12,10 @@
   "license": "ISC",
   "dependencies": {
     "binance": "^2.5.0",
+    "binance-api-node": "^0.12.3",
     "dotenv": "^16.0.3",
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "http": "^0.0.1-security",
+    "socket.io": "^4.6.1"
   }
 }
