@@ -4,6 +4,12 @@ const io = require('socket.io')(server);
 const port = process.env.PORT || 3000;
 const Binance = require('binance-api-node').default;
 require('dotenv').config();
+const cors = require('cors');
+const { connection } = require('./db');
+const { userRouter } = require('./routes/user.routes');
+app.use(cors())
+app.use(express.json())
+app.use("/user", userRouter)
 
 //require('./controller/trader/trader.controller');
 //const { getCurrentPrice } = require('./controller/market/market.ocntroller');
@@ -58,6 +64,13 @@ async function makeOrder() {
   });
 }
 
+
+app.get("/", (req, res) => {
+  res.send({
+      message:"api is working now"
+  })
+})
+
 server.listen(port, async () => {
   makeOrder();
   // const data = await getExistingCurrencies();
@@ -76,5 +89,12 @@ server.listen(port, async () => {
   */
 
   // await makeBuyOrder(client);
+  try {
+    await connection
+    console.log("database is connected")
+} catch (error) {
+    console.log(error)
+    
+}
   console.log(`Listening on port ${port}`);
 });
