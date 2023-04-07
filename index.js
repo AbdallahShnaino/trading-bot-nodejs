@@ -49,12 +49,13 @@ app.post('/makeOrder', async (req, res) => {
 });
 async function makeOrder() {
   await client.order({
-    symbol: 'USDT',
+    symbol: 'DOTUSDT',
     side: 'BUY',
     quantity: '2',
-    price: '0.0002',
-    stopPrice: '0.00019',
-    stopLimitPrice: '0.00018',
+    price: '5.4',
+    
+    // stopPrice: '0.00019',
+    //  stopLimitPrice: '0.00018',
   });
 }
 
@@ -66,7 +67,7 @@ server.listen(port, async () => {
 
   /*
   
-    symbol: 'USDT',
+  symbol: 'USDT',
   side: 'BUY',
   quantity: '100',
   price: '0.0002',
