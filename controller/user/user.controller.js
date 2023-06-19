@@ -1,19 +1,36 @@
 const User = require('../../models/user/user.model');
 const { encrypt, decrypt, generateID } = require('./../../utils/password');
 
-async function create(fullName, email, password, cb) {
+async function create(fullName, email, password, picture, id, cb) {
   const user = await findByEmail(email);
   if (user) {
     const error = new Error('user exist!');
     throw error;
   }
-  const userId = await generateID();
-  await encrypt(password, async (hashedPassword) => {
-    User.create({
+  if (picture == null && id == null) {
+    const userId = await generateID();
+    await encrypt(password, async (hashedPassword) => {
+      User.create({
+        fullName,
+        email,
+        password: hashedPassword,
+        userId: userId,
+      })
+        .then((result) => {
+          cb(result);
+        })
+        .catch((e) => {
+          const error = new Error(e.message);
+          throw error;
+        });
+    });
+  } else {
+    await User.create({
       fullName,
       email,
-      password: hashedPassword,
-      userId: userId,
+      password,
+      userId: id,
+      imageURL: picture,
     })
       .then((result) => {
         cb(result);
@@ -22,11 +39,11 @@ async function create(fullName, email, password, cb) {
         const error = new Error(e.message);
         throw error;
       });
-  });
+  }
 }
 
 async function update(
-  id,
+  userId,
   {
     fullName,
     curr_password,
@@ -39,13 +56,10 @@ async function update(
   }
 ) {
   try {
-    const user = await User.findByPk(id);
+    const user = await User.findByPk(userId);
 
     if (!user) {
       throw new Error('User not found');
-    }
-    if (user.userId !== req.session.userId) {
-      throw new Error('Un Auth recource');
     }
 
     if (email != undefined) user.email = email;
@@ -88,8 +102,8 @@ async function findAll() {
 
 async function findById(id) {
   try {
-    const users = await User.findByPk(id);
-    return users;
+    const user = await User.findByPk(id);
+    return user;
   } catch (error) {
     throw error;
   }
@@ -104,8 +118,8 @@ async function findByEmail(email) {
   }
 }
 
-async function postUpdateUser(req, res) {
-  const id = req.params.id;
+async function postUpdateUser(req, res, mext) {
+  const id = req.userId;
   const {
     fullName,
     curr_password,
@@ -135,14 +149,14 @@ async function postUpdateUser(req, res) {
   } catch (e) {
     const error = new Error(e.message);
     error.statusCode = 404;
-    return next(error);
+    return mext(error);
   }
 }
 
 async function deleteUser(req, res) {
-  const id = req.session.user.id;
+  const userId = req.userId;
   try {
-    await destroy(id);
+    await destroy(userId);
     req.session.destroy();
     return res.status(200).json({
       message: 'deleted successfully',
@@ -155,9 +169,9 @@ async function deleteUser(req, res) {
 }
 
 async function deleteUserByAdmin(req, res) {
-  const id = req.params.id;
+  const userId = req.params.id;
   try {
-    await destroy(id);
+    await destroy(userId);
     req.session.destroy();
     return res.status(200).json({
       message: 'deleted successfully',

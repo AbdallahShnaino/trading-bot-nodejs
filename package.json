@@ -12,12 +12,16 @@
   "license": "ISC",
   "dependencies": {
     "bcrypt": "^5.1.0",
+    "binance-api-node": "^0.12.4",
     "connect-session-sequelize": "^7.1.6",
     "cors": "^2.8.5",
     "csurf": "^1.11.0",
+    "dotenv": "^16.0.3",
     "express-session": "^1.17.3",
     "express-validator": "^7.0.1",
     "mysql2": "^3.2.3",
+    "passport": "^0.6.0",
+    "passport-google-oauth20": "^2.0.0",
     "sequelize": "^6.31.0",
     "uuid": "^9.0.0"
   }

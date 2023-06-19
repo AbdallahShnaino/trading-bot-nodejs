@@ -18,7 +18,8 @@ async function postSignup(req, res, next) {
     });
   }
   try {
-    await create(fullName, email, password, (user) => {
+    const self = null;
+    await create(fullName, email, password, self, self, (user) => {
       /*
       req.session.isLoggedIn = true;
       req.session.user = user;
@@ -71,6 +72,7 @@ async function postLogin(req, res, next) {
 async function getLogout(req, res) {
   req.session.isLoggedIn = false;
   req.session.user = null;
+  req.user = null;
   req.session.destroy();
   //req.session.save();
   res.status(200).json({ message: 'loggedout' });
