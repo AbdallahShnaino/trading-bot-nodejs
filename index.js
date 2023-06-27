@@ -6,6 +6,11 @@ const csurf = require('csurf');
 const session = require('express-session');
 const mySessionStore = require('./utils/session');
 const passport = require('passport');
+const helmet = require('helmet');
+const crypto = require('crypto');
+
+app.use(helmet());
+
 require('dotenv').config();
 
 //middelwares
@@ -14,7 +19,7 @@ const userRoute = require('./routes/user/user.route');
 const strategyRouter = require('./routes/strategy/strategy.route');
 app.use(
   session({
-    secret: 'my secret',
+    secret: crypto.randomBytes(32).toString('hex'),
     resave: false,
     saveUninitialized: false,
     store: mySessionStore,
