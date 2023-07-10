@@ -87,7 +87,8 @@ facebookAuthRoute.get('/success', (req, res, next) => {
 /*   console.log(req.user);
   req.session.save(); */
 
-  return res.status(200).send('sucess');
+  console.log('***********',req.user)
+  return res.status(200).json({"user":req.user});
 });
 facebookAuthRoute.get('/failure', (req, res, next) => {
   return res.status(400).send();

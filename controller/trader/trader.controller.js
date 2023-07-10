@@ -1,39 +1,76 @@
-const { MainClient } = require('binance');
-require('dotenv').config();
+const Binance = require('binance-api-node').default;
 
-async function getClientReference(userId) {
-  const { api_key, api_secret } = await getUserKeys(userId);
-  return new MainClient({
-    api_key: api_key,
-    api_secret: api_secret,
-  });
+let clientBucketAmmounts = []
+
+
+function getCurrencyBySide(pair) {
+  const [sellCurrency,buyCurrency] = pair.split("/");
+  clientBucketAmmounts.push({currency:sellCurrency , ammount:0})
+  clientBucketAmmounts.push({currency:buyCurrency , ammount:0})
+  return[sellCurrency,buyCurrency]
 }
 
-async function getExistingCurrencies(userId) {
-  const client = await getClientReference(userId);
-  const { balances } = await client.getAccountInformation();
-  const currencies = [];
-  balances.forEach((element) => {
-    if (element.free >= 0.01) {
-      currencies.push(element);
-    }
-  });
-  return { currencies: currencies };
+async function isAvailableAmmount (binanceClient, ammount , pairs , numberOfTrades) {
+  let data;
+  for(let pair of pairs) {
+    const currency = getCurrencyBySide(pair)[1].toString()
+    const { balances } = await binanceClient.accountInfo({recvWindow:60000});
+    data = balances.filter(element => parseFloat(element.free) > (ammount * numberOfTrades) && currency == element.asset);
+  }
+  if (data.length <= 0 ) {
+    const error = new Error("you need to have enough assets to trade");
+    throw error
+  }
 }
 
-async function getUserKeys(userId) {
-  // go to DB
-  // should be deleted after database createion
-  const API_KEY = process.env.API_KEY;
-  const SECRET_KEY = process.env.SECRET_KEY;
+function convertToMS (runAfter) {
+  let ms = 0;
+  const unit = runAfter.split(/[\W\d]+/).join("");
+  const number = parseInt(runAfter.split(/[^\d]+/).join(""));
+  if (unit == 'm') {
+    ms = number * 60000
+  }else if (unit == 'h') {
+    ms = number *  3.6e+6
+  }else if (unit == 'd') {
+    ms = number * 8.64e+7
+  }else if (unit == 'w') {
+    ms = number * 6.048e+8
+  }else if (unit == 'M') {
+  ms = number * 2.628e+9
+  }
+  ms = ms - 30000 // 30s
+  return ms
+}
 
-  return {
-    api_key: API_KEY,
-    api_secret: SECRET_KEY,
-  };
+
+
+
+async function isAcceptedTransaction (binanceClient , ammount , pair ) {
+  const currency = getCurrencyBySide(pair)[1].toString()
+   const { balances } = await binanceClient.accountInfo({recvWindow:60000});
+   let data = balances.filter(element => parseFloat(element.free) > ammount  && currency == element.asset);
+ if (data.length <= 0 ) {
+   const error = new Error("you need to have enough assets to trade");
+   throw error
+}else{
+ return true
+}
+}
+
+function initClient(apiKey, apiSecret) {
+  return  Binance({
+    apiKey,
+    apiSecret,
+  });
 }
 
 module.exports = {
-  getExistingCurrencies,
-  getClientReference,
-};
+  isAvailableAmmount,
+  convertToMS,
+  initClient,
+  isAcceptedTransaction,
+  convertToMS,
+  isAvailableAmmount,
+  getCurrencyBySide,
+
+}

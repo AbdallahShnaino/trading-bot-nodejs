@@ -1,13 +1,15 @@
 const Strategy = require('./../../models/strategy/strategy.nodel');
-const Binance = require('binance-api-node').default;
 const { findById } = require('./../../controller/user/user.controller');
+const { isAvailableAmmount , initClient} = require('./../trader/trader.controller')
+const runRsiIndecator = require('./workers/rsi.worker')
+
 async function postCreate(userId, strategyData) {
   return await Strategy.create({
     userId,
     strategyData,
   })
     .then((strategy) => {
-      console.log('new strategy has been created');
+      console.log('new strategy has been created',strategy.dataValues.id);
       return strategy;
     })
     .catch((e) => {
@@ -15,35 +17,151 @@ async function postCreate(userId, strategyData) {
     });
 }
 
+async function findStrategyById(id) {
+  try {
+    const strategy = await Strategy.findByPk(id);
+    if (strategy) {
+      return strategy
+    }
+    const error = new Error("There is no strategy id match the supplied id");
+    throw error
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function findStrategyByUserId(userId) {
+  try {
+    const strategy = await Strategy.findAll({ where: { userId: userId } });
+    if (strategy) {
+      return strategy
+    }
+    const error = new Error("There is no strategies associated with this user");
+    throw error
+  } catch (error) {
+    throw error;
+  }
+}
+
+
+async function updateStrategy (strategyId , strategyData) {
+  const strategy = await findStrategyById(strategyId);
+  if (!strategy) {
+    throw new Error('strategy not found');
+  }
+  if (strategyData != undefined) strategy.strategyData = strategyData;
+  return await strategy.save();
+}
+
+async function destroy(id) {
+  try {
+    const strategy = await Strategy.findByPk(id);
+    strategy.destroy();
+  } catch (error) {
+    throw error;
+  }
+}
+
+
 async function postCreateStrategy(req, res, next) {
+ // const { pairs ,winningMarginPercent , losingMarginPercent} = req.body
+ // const monetor = generateMonetorObject(pairs , winningMarginPercent , losingMarginPercent )
   const strategyData = Object.assign(req.body, {
-    purchasedAssets: 0,
-    availableAmmount: req.body.ammount,
+    monetor: [],
   });
-  // const strategy = await postCreate(req.userId, JSON.stringify(strategyData));
-  // const { purchasedAssets } = JSON.parse(strategy.strategyData);
-  const { binanceAPIKey, binanceSecretKey } = await findById(req.userId);
-  const binanceClient = initClient(binanceAPIKey, binanceSecretKey);
+  
+
+
+   const strategy = await postCreate(req.userId, JSON.stringify(strategyData));
+   // const { purchasedAssets } = JSON.parse(strategy.strategyData);
   console.log('retrive user from database');
-  console.log(await binanceClient.accountInfo());
+  const { binanceAPIKey, binanceSecretKey } = await findById(req.userId);
 
-  /* 
-  const client = Binance({
-    apiKey: API_KEY,
-    apiSecret: SECRET_KEY,
-  });
-*/
-  //console.log(strategyData);
-  // return res.status(200).json(strategy);
-  return res.status(200).json(11);
+  console.log('init binance client');
+  let binanceClient = initClient(binanceAPIKey, binanceSecretKey);
+  const clientPing = await binanceClient.ping()
+  if (!clientPing) {
+    return res.status(400).json({"message": "connection refused with this client" });
+  }
+  console.log('clientPing',clientPing)
+
+  const { 
+    ammount , 
+    pairs , 
+    numberOfTrades,
+  } = JSON.parse(strategy.strategyData);
+  try {
+    await isAvailableAmmount(binanceClient, ammount , pairs , numberOfTrades)
+  } catch (error) {
+    return res.status(400).json({"message": error.message});
+  }
+  const  strategyId = strategy.dataValues.id;
+
+  runRsiIndecator({
+    keys: {binanceAPIKey, binanceSecretKey},
+    strategyId,
+   }).then(e => {
+    console.log('eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',e)
+   }).catch(e => {
+    console.log(' 888888888888 ',e.message)
+
+   })
+
+
+
+
+  return res.status(200).json({"strategy":strategy});
 }
 
-function initClient(apiKey, apiSecret) {
-  return Binance({
-    apiKey,
-    apiSecret,
-  });
+
+async function postUpdateStrategy (req , res , next) {
+  const { strategyData } = req.body
+  const strategyId = req.params.id
+  try {
+    const strategy = await updateStrategy(strategyId ,  JSON.stringify(strategyData))
+    return res.status(200).json({"strategy":strategy});
+  } catch (error) {
+    return res.status(400).json({"error":error.message});
+  }
 }
+
+async function deleteStrategy (req , res , next) {
+  try {
+    await destroy(req.params.id)
+    return res.status(200).json({"message":"strategy has been deleted"});  
+  } catch (error) {
+    return res.status(400).json({"error":error.message});
+  }
+}
+
+async function getStrategyById (req , res , next) {
+  const id = req.params.id;
+  try {
+    const strategy = await findStrategyById(req.params.id)
+    return res.status(200).json({"strategy":strategy});  
+  } catch (error) {
+    return res.status(400).json({"error":error.message});
+  }
+
+}
+
+async function getUserStrategies (req , res , next) {
+  try {
+    const userId = req.session.user.userId;
+    const strategies = await findStrategyByUserId(userId)
+    return res.status(200).json({"strategies":strategies});  
+  } catch (error) {
+    return res.status(400).json({"error":error.message});
+  }
+}
+
+
+
 module.exports = {
   postCreateStrategy,
+  postUpdateStrategy,
+  deleteStrategy,
+  getStrategyById,
+  findStrategyById,
+  getUserStrategies,
 };
