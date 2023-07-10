@@ -2,7 +2,7 @@
 const {
   Worker, isMainThread, parentPort, workerData,
 } = require('node:worker_threads');
-const { findStrategyById } = require('./../strategy.controller')
+const { findStrategyById ,updateStrategy} = require('./../strategy.controller')
 const { rsi, getDetachSourceFromOHLCV } = require('trading-indicator')
 const myEmitter = require('./../../../utils/strategy.update.emitter');
 
@@ -49,13 +49,15 @@ myEmitter.on('update', (record) => {
     
     let binanceClient = initClient(keys.binanceAPIKey , keys.binanceSecretKey)
     let strategy = await findStrategyById(strategyId)
+    console.log('strategy',strategy)
+    let userId = strategy.dataValues.userId
     let strategyData = JSON.parse(strategy.strategyData)
     let numberOfTrades = strategyData.numberOfTrades;
 
 
     console.log('strategyData.monetor',strategyData.monetor)
       
-      async function startRsi (strategyData) {
+      async function startRsi (strategyData , strategyId , updateStrategy) {
 
         try {
           let pairs = strategyData.pairs
@@ -84,25 +86,39 @@ myEmitter.on('update', (record) => {
                   let losingPrice = computelosingMarginPercent(Object.values(pairPrice)[0]  , strategyData.losingMarginPercent)
                   losingPrice = financial(losingPrice)
                   let monetor = strategyData.monetor
-                  
+                  // buy
                   monetor.push({
                     pair:Object.keys(pairPrice)[0] ,
                     pairPrice:Object.values(pairPrice)[0] ,
                     winningPrice,
                     losingPrice
                   })
-                  const newStrategyData = Object.assign(strategyData, {
+                  let newStrategyData = Object.assign(strategyData, {
                     monetor
                   });
-
-                 console.log( JSON.stringify(newStrategyData))
-                  // append this in database
-                  // monetor matching
+                  console.log('newStrategyData' , newStrategyData)
+                  const strategy = await updateStrategy(strategyId ,  JSON.stringify(newStrategyData))
+               console.log(' strategy after update and add winning and losing ',strategy)
                 }
                 if (numberOfTrades <= 0 ) {
                   parentPort.postMessage({message:"operation done" })
                   clearInterval(interval);
                 }
+              }
+            }
+
+            for(let obj of strategyData.monetor) {
+              let p = await binanceClient.prices({ symbol: obj.pair })
+              let currentPrice = Object.values(p)[0]
+              console.log('currentPrice',currentPrice,'pair',obj.pair)
+              if (currentPrice == obj.winningPrice) {
+                console.log('winning ...........')
+                // sell
+              }
+              if (currentPrice == obj.losingPrice) {
+                console.log('losing ...........')
+                // sell
+
               }
             }
       
@@ -114,7 +130,7 @@ myEmitter.on('update', (record) => {
       
       }
 
-      let interval = setInterval( startRsi ,5000 ,strategyData)
+      let interval = setInterval( startRsi ,5000 ,strategyData , strategyId , updateStrategy)
       console.log('first tries',numberOfTrades)
 
       parentPort.on('message', async (data) => {
@@ -125,7 +141,7 @@ myEmitter.on('update', (record) => {
         console.log('strategyData',strategyData)
         clearInterval(interval);
         console.log('interval',interval)
-        interval = setInterval( startRsi ,5000 ,strategyData)
+        interval = setInterval( startRsi ,5000 ,strategyData , strategyId)
         console.log('Received data from main thread:', data);
         parentPort.postMessage('Hello from the worker thread!');
       });
@@ -158,5 +174,4 @@ function computelosingMarginPercent (price , losingMarginPercent) {
 function financial(x) {
   return Number.parseFloat(x).toFixed(1);
 }
-
 

@@ -5,7 +5,9 @@ const {
   postUpdateStrategy,
   deleteStrategy,
   getStrategyById,
-  getUserStrategies
+  getUserStrategies,
+  getUserFreeAssets,
+  getAssetPrice
 } = require('../../controller/strategy/strategy.controller');
 const getCurrentUser = require('../../middleware/storeId.middleware');
 strategyRouter.get('/test', getCurrentUser, (req, res, next) => {
@@ -25,6 +27,12 @@ strategyRouter.post('/rsi/update/:id', /* getCurrentUser ,*/  postUpdateStrategy
 
 strategyRouter.delete('/rsi/delete/:id', /* getCurrentUser ,*/  deleteStrategy);
 
+
+strategyRouter.get('/assets', getCurrentUser , getUserFreeAssets);
+
+strategyRouter.get('/price/:symbol', getCurrentUser , getAssetPrice);
+
+
 strategyRouter.get('/test/me', async (req,res) => {
   console.log('------------------')
   const binanceClient =  Binance({
@@ -32,11 +40,10 @@ strategyRouter.get('/test/me', async (req,res) => {
     apiSecret:'gToljXHbKORO0bZWSYZEo6SGg7HjXYQosyhSdFO1LUfH625nqAvy0GmN6oc4wrlv',
   });
 
-  let pair = 'BTC/USDT'
-  let symbol = pair.split("/").join("")
-  let symblePrice = await binanceClient.prices({ symbol })
-  console.log('symble',symbol,'symblePrice',symblePrice)
-  res.send({})
+  let accountInfo = await binanceClient.accountInfo()
+  let balances = accountInfo.balances.filter(asset => asset.free > 0);
+  console.log('balances',balances)
+  res.send({'balances':balances})
 });
 
 

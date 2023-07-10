@@ -155,13 +155,50 @@ async function getUserStrategies (req , res , next) {
   }
 }
 
+async function getUserFreeAssets (req , res , next) {
+  try {
+    const userId = req.session.user.userId;
+    const { binanceAPIKey, binanceSecretKey } = await findById(userId);
+    let binanceClient = initClient(binanceAPIKey, binanceSecretKey);
+    let accountInfo = await binanceClient.accountInfo()
+    let balances = accountInfo.balances.filter(asset => asset.free > 0);
+    const balancesList = balances.map((obj) =>{
+      return {
+        asset:obj.asset,
+        balance:obj.free,
+      }
+    });
+    return res.status(200).json({"balances":balancesList});  
+  } catch (error) {
+    return res.status(400).json({"error":error.message});
+  }
+}
+
+
+async function getAssetPrice (req , res , next) {
+  try {
+    const userId = req.session.user.userId;
+    const symbol = req.params.symbol
+    const { binanceAPIKey, binanceSecretKey } = await findById(userId);
+    let binanceClient = initClient(binanceAPIKey, binanceSecretKey);
+    let symblePrice = await binanceClient.prices({ symbol })
+    return res.status(200).json({"symbol":symbol , "price":symblePrice });  
+  } catch (error) {
+    return res.status(400).json({"error":error.message});
+  }
+}
+
+
 
 
 module.exports = {
   postCreateStrategy,
   postUpdateStrategy,
+  updateStrategy,
   deleteStrategy,
   getStrategyById,
   findStrategyById,
   getUserStrategies,
+  getUserFreeAssets,
+  getAssetPrice,
 };
