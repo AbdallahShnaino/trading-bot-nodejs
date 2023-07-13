@@ -2,7 +2,7 @@ const sequelize = require('./utils/database');
 const express = require('express');
 const app = express();
 const cors = require('cors');
-const csurf = require('csurf');
+//const csurf = require('csurf');
 const session = require('express-session');
 const mySessionStore = require('./utils/session');
 const passport = require('passport');
@@ -19,7 +19,16 @@ const userRoute = require('./routes/user/user.route');
 const strategyRouter = require('./routes/strategy/strategy.route');
 app.use(
   session({
-    secret: crypto.randomBytes(32).toString('hex'),
+    genid: function(req) {
+      return crypto.randomBytes(32).toString('hex')
+    },
+    cookie: {
+      maxAge: 1000 * 60 * 60 * 24, // 1 Day
+      httpOnly: true,
+      secure: false, // Needs to be true
+      sameSite: true,
+    },
+    secret: /*crypto.randomBytes(32).toString('hex') */ 'asfguasfgivubsadkfghjsdfhguihdgdsf',
     resave: false,
     saveUninitialized: false,
     store: mySessionStore,
@@ -30,7 +39,7 @@ app.use(
 app.use(passport.session());
 
 // csurf activation
-const csurfProtection = csurf();
+//const csurfProtection = csurf();
 //app.use(csurfProtection);
 app.use((req, res, next) => {
   // console.log(req.session.csrfToken());
@@ -54,7 +63,9 @@ app.use((req, res, next) => {
 
 */
 
-app.use(cors());
+app.use( cors({
+  exposedHeaders: ["session_id"]
+}));
 app.use(express.json());
 app.use('/auth', authRoute);
 app.use('/user', userRoute);
@@ -76,6 +87,7 @@ app.use((error, req, res, next) => {
 // database config
 sequelize
   .sync({ focus: true })
+
   // .sync()
   .then((result) => {
     mySessionStore

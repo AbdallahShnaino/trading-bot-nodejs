@@ -48,14 +48,22 @@ async function postLogin(req, res, next) {
 
     await decrypt(password, user.password, (result) => {
       if (result == true) {
-        req.session.isLoggedIn = true;
-        req.session.user = user;
-        req.session.save();
-        console.log(req.session);
-        return res.status(200).json({
-          message: 'login successfully',
-          user: user,
-        });
+        req.session.regenerate(function (err ) {
+          if (err) console.log(err)
+          req.session.user = user
+          req.session.isLoggedIn = true;
+          req.session.save(function (err , session) {
+            if (err) console.log(err)
+
+            return res.status(200).set('session_id', req.sessionID).json({
+                message: 'login successfully',
+                user: user,
+                sessionId: req.sessionID
+              });
+          })
+        })
+
+
       } else {
         const error = new Error('password is not correct!');
         error.statusCode = 401;
