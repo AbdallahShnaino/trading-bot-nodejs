@@ -71,20 +71,17 @@ myEmitter.on('update', (record) => {
             const isAccepted = await isAcceptedTransaction (binanceClient , 
               strategyData.ammount , pair )
 
-              if (true) {
-          //  if (rsiValue == signal && isAccepted) {
-                  console.log('current number of tries ',numberOfTrades)
-                  console.log('numberOfTrades',numberOfTrades)
+          if (rsiValue == signal && isAccepted) {
 
                if (numberOfTrades > 0 &&  numberOfTrades <= numberOfTrades) {
-                  console.log('match')
-                  numberOfTrades -= 1
-                  // pair
+                 console.log('match im pair ' , pair , 'in signal ',signal)
+                 console.log('current number of tries ',numberOfTrades)
+                 // pair
                   let pairPrice = await getCurrentPrice(binanceClient,pair)
                   let winningPrice = computeWinningMarginPercent(Object.values(pairPrice)[0]  , strategyData.winningMarginPercent)
-                  winningPrice = financial(winningPrice)
+              //    winningPrice = financial(winningPrice)
                   let losingPrice = computelosingMarginPercent(Object.values(pairPrice)[0]  , strategyData.losingMarginPercent)
-                  losingPrice = financial(losingPrice)
+              //    losingPrice = financial(losingPrice)
                   let monetor = strategyData.monetor
                   // buy
                   monetor.push({
@@ -96,11 +93,11 @@ myEmitter.on('update', (record) => {
                   let newStrategyData = Object.assign(strategyData, {
                     monetor
                   });
-                  console.log('newStrategyData' , newStrategyData)
                   const strategy = await updateStrategy(strategyId ,  JSON.stringify(newStrategyData))
                console.log(' strategy after update and add winning and losing ',strategy)
-                }
-                if (numberOfTrades <= 0 ) {
+               numberOfTrades -= 1
+              }
+                if (numberOfTrades <= 0 && monetor.length == 0 ) {
                   parentPort.postMessage({message:"operation done" })
                   clearInterval(interval);
                 }
@@ -111,11 +108,12 @@ myEmitter.on('update', (record) => {
               let p = await binanceClient.prices({ symbol: obj.pair })
               let currentPrice = Object.values(p)[0]
               console.log('currentPrice',currentPrice,'pair',obj.pair)
-              if (currentPrice == obj.winningPrice) {
+              if (currentPrice >= obj.winningPrice) {
+                // delete from monetor array
                 console.log('winning ...........')
                 // sell
               }
-              if (currentPrice == obj.losingPrice) {
+              if (currentPrice <= obj.losingPrice) {
                 console.log('losing ...........')
                 // sell
 
@@ -174,4 +172,3 @@ function computelosingMarginPercent (price , losingMarginPercent) {
 function financial(x) {
   return Number.parseFloat(x).toFixed(1);
 }
-
