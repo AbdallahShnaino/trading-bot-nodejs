@@ -8,9 +8,7 @@ module.exports = async (req, res, next) => {
       const obj = JSON.parse(result.data);
       req.session.user = obj.user
       req.user = obj.user
-     console.log('++++++++++++++++++++++ session',req.session);
     }
-    console.log('-----------isLoggedIn----------- ',req.session.isLoggedIn == false ,'-----------user----------- ', req.user == undefined ,'-----------result----------- ', result == false)
     if (req.session.isLoggedIn == false || req.user == undefined || result == false ) {
       return res
         .status(303)

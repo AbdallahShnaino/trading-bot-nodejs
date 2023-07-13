@@ -31,6 +31,7 @@ app.use(
     secret: /*crypto.randomBytes(32).toString('hex') */ 'asfguasfgivubsadkfghjsdfhguihdgdsf',
     resave: false,
     saveUninitialized: false,
+    
     store: mySessionStore,
     resave: false,
     //  proxy: true, // if you do SSL outside of node.
