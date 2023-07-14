@@ -58,7 +58,6 @@ async function postLogin(req, res, next) {
             return res.status(200).set('session_id', req.sessionID).json({
                 message: 'login successfully',
                 user: user,
-                sessionId: req.sessionID
               });
           })
         })
