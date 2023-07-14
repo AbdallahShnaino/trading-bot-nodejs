@@ -22,46 +22,48 @@ passport.use(
       session: false,
     },
     async (accessToken, refreshToken, profile, done) => {
-       console.log( profile);
 
-      passport.serializeUser(function (user, cb) {
-        const u = user;
-        process.nextTick(async function () {
-          const { sub: id, email, name, picture } = u._json;
-          console.log(u._json);
-          const user = await findByEmail(email);
+  // Check if the user data is in the correct format.
+  if (!profile.id) {
+    return done(new Error('Failed to deserialize user out of session passport'));
+  }
 
-          if (user == null) {
-            console.log('passport have a new user');
-            return await create(name, email, '', picture, id, (user) => {
-              return cb(null, email);
-            });
-          } else {
-            console.log('passport say this user in db before');
-            return cb(null, email);
-          }
+  // Serialize the user data.
+  passport.serializeUser(async (user, done) => {
+    const commingUser = user
+    try {
+      const {email , name , picture} = commingUser._json
+      const user = await findByEmail(email);
+      if (user == null) {
+        console.log('passport have a new user');
+        return await create(name, email, '', picture, commingUser.id, (serializedUser) => {
+          done(null, serializedUser);
         });
-      });
+      } else {
+        console.log('passport say this user in db before');
+        return done(null, user);
+      }
 
-      passport.deserializeUser(async function (email, cb) {
-        console.log('passport say this user in db and have a session');
+     // const serializedUser = JSON.stringify(user);
+   //   done(null, serializedUser);
+    } catch (error) {
+      done(error);
+    }
+  });
 
-        const user = await findByEmail(email);
-        if (user == null) {
-          // register it user not exist
-          //  console.log('register it user not exist');
-          //  console.log(user);
-          const err = new Error('user not exist');
-          return cb(err);
-        } else {
-          // contenue login operation
-          // console.log('contenue login operation');
-          // console.log(user);
-          console.log('passport say this user in db and have a session');
+    // Deserialize the user data.
+    passport.deserializeUser((user, done) => {
+      const deserializedUser = user
+      try {
+        done(null, deserializedUser);
+      } catch (error) {
+        // If the user data is not in the correct format, then log the user out.
+        done(new Error('Failed to deserialize user out of session passport'));
+      }
+    });
 
-          return cb(null, user);
-        }
-      });
+
+  // Authenticate the user.
       done(null, profile);
     }
   )
@@ -83,12 +85,14 @@ facebookAuthRoute.get(
 );
 
 facebookAuthRoute.get('/success', (req, res, next) => {
-  console.log('req.user',req.user);
-/*   console.log(req.user);
-  req.session.save(); */
+  req.session.save(function (err , session) {
+    if (err) console.log(err)
 
-  console.log('***********',req.user)
-  return res.status(200).json({"user":req.user});
+    return res.status(200).set('session_id', req.sessionID).json({
+        message:req.user
+      });
+  })
+
 });
 facebookAuthRoute.get('/failure', (req, res, next) => {
   return res.status(400).send();

@@ -10,6 +10,25 @@ const helmet = require('helmet');
 const crypto = require('crypto');
 
 app.use(helmet());
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  next();
+});
+
+app.use( cors({
+  origin: '*',
+  exposedHeaders: ["session_id"],
+}));
+
+app.use((req, res, next) => {
+//  req.set( 'Access-Control-Allow-Origin','*')
+console.log(res.get("Access-Control-Allow-Origin"));
+
+  next();
+});
 
 require('dotenv').config();
 
@@ -42,13 +61,7 @@ app.use(passport.session());
 // csurf activation
 //const csurfProtection = csurf();
 //app.use(csurfProtection);
-app.use((req, res, next) => {
-  // console.log(req.session.csrfToken());
-  //req.locals.isAuthonticated = req.session.isLoggedIn;
-  //req.locals.csrfToken = req.session.csrfToken();
-  //console.log(req.locals);
-  next();
-});
+
 /*
 app.use((req, res, next) => {
   if (!req.session.user) {
@@ -64,18 +77,20 @@ app.use((req, res, next) => {
 
 */
 
-app.use( cors({
-  exposedHeaders: ["session_id"]
-}));
+
 app.use(express.json());
 app.use('/auth', authRoute);
 app.use('/user', userRoute);
 app.use('/strategy', strategyRouter);
+/* 
+
 app.use((error, req, res, next) => {
   return res.status(error.statusCode | 400).json({
     message: error.message,
   });
 });
+
+*/
 // models
 //const User = require('./models/user/user.model');
 //const Transaction = require('./models/transaction/transaction.model');

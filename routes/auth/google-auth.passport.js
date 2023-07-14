@@ -1,76 +1,60 @@
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const express = require('express');
 const googleAuthRouter = express.Router();
-// lin for auth
-const passport = require('passport');
-const GoogleStrategy = require('passport-google-oauth20');
 const {
   findByEmail,
   create,
 } = require('./../../controller/user/user.controller');
 
+passport.use(new GoogleStrategy({
+  clientID: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  callbackURL: '/auth/google/redirect',
+}, (accessToken, refreshToken, profile, done) => {
+  // Check if the user data is in the correct format.
+  if (!profile.id) {
+    return done(new Error('Failed to deserialize user out of session passport'));
+  }
 
-//   http://localhost:3000/auth/google
-//   http://localhost:3000/auth/test
-
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: '/auth/google/redirect',
-      session: false,
-    },
-    async (accessToken, refreshToken, profile, done) => {
-      //  console.log(accessToken, refreshToken, profile);
-
-      passport.serializeUser(function (user, cb) {
-        const u = user;
-        process.nextTick(async function () {
-          const { sub: id, email, name, picture } = u._json;
-          console.log(u._json);
-          const user = await findByEmail(email);
-
-          if (user == null) {
-            console.log('passport have a new user');
-            return await create(name, email, '', picture, id, (user) => {
-              return cb(null, email);
-            });
-          } else {
-            console.log('passport say this user in db before');
-            return cb(null, email);
-          }
+  // Serialize the user data.
+  passport.serializeUser(async (user, done) => {
+    const commingUser = user
+    try {
+      const {email , name , picture} = commingUser._json
+      const user = await findByEmail(email);
+      if (user == null) {
+        console.log('passport have a new user');
+        return await create(name, email, '', picture, commingUser.id, (serializedUser) => {
+          done(null, serializedUser);
         });
-      });
+      } else {
+        console.log('passport say this user in db before');
+        return done(null, user);
+      }
 
-      passport.deserializeUser(async function (email, cb) {
-        console.log('passport say this user in db and have a session');
-
-        const user = await findByEmail(email);
-        if (user == null) {
-          // register it user not exist
-          //  console.log('register it user not exist');
-          //  console.log(user);
-          const err = new Error('user not exist');
-          return cb(err);
-        } else {
-          // contenue login operation
-          // console.log('contenue login operation');
-          // console.log(user);
-          console.log('passport say this user in db and have a session');
-
-          return cb(null, user);
-        }
-      });
-
-      //   const { sub: id, email, name, picture } = profile._json;
-      //    await googleAuthUser(id, email, name, picture);
-      //     console.log('passport callback executed!');
-      done(null, profile);
+     // const serializedUser = JSON.stringify(user);
+   //   done(null, serializedUser);
+    } catch (error) {
+      done(error);
     }
-  )
-);
+  });
+
+    // Deserialize the user data.
+    passport.deserializeUser((user, done) => {
+      const deserializedUser = user
+      try {
+        done(null, deserializedUser);
+      } catch (error) {
+        // If the user data is not in the correct format, then log the user out.
+        done(new Error('Failed to deserialize user out of session passport'));
+      }
+    });
 
 
+  // Authenticate the user.
+  done(null, profile);
+}));
 
 googleAuthRouter.get(
   '/',
@@ -78,7 +62,6 @@ googleAuthRouter.get(
     scope: ['profile', 'email'],
   })
 );
-// getGoogleLoginRedirection
 
 googleAuthRouter.get(
   '/redirect',
@@ -89,15 +72,17 @@ googleAuthRouter.get(
 );
 
 googleAuthRouter.get('/success', (req, res, next) => {
-  console.log(req.user);
-  req.session.save();
+  req.session.save(function (err , session) {
+    if (err) console.log(err)
 
-  return res.status(200).send(req.user);
+    return res.status(200).set('session_id', req.sessionID).json({
+        message:req.user
+      });
+  })
 });
 googleAuthRouter.get('/failure', (req, res, next) => {
-  return res.status(400).send();
+  return res.status(400).json({message:"login by google account faild"});
 });
-
 
 
 module.exports = googleAuthRouter;

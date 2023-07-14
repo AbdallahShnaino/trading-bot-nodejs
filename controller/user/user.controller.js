@@ -222,7 +222,8 @@ async function getUserByEmail(req, res, next) {
 }
 
 function whoami(req, res, next) {
-  res.status(200).json({ user: req.session.user });
+  console.log(req.user)
+  res.status(200).json({ user: req.user });
 }
 
 module.exports = {
